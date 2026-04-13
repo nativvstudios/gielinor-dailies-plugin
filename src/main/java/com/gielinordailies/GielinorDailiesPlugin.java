@@ -222,8 +222,8 @@ public class GielinorDailiesPlugin extends Plugin
             ticksSinceLastTaskFetch = 0;
         }
 
-        // Check for quest state changes every 60 seconds (~100 ticks)
-        if (ticksSinceLastQuestCheck >= 100)
+        // Check for quest state changes every ~10 seconds (~17 ticks)
+        if (ticksSinceLastQuestCheck >= 17)
         {
             checkQuestChangesAsync();
             ticksSinceLastQuestCheck = 0;
@@ -577,13 +577,20 @@ public class GielinorDailiesPlugin extends Plugin
         if (!changed.isEmpty())
         {
             int totalQp = questTracker.getTotalQuestPoints();
-            // Push changes on background thread
+            // Push changes on background thread, then immediately refresh tasks
             executor.submit(() ->
             {
                 try
                 {
                     boolean success = apiClient.pushQuests(matchedCharacterId, changed, totalQp);
                     log.info("Gielinor Dailies: Pushed {} quest changes, {} QP (success={})", changed.size(), totalQp, success);
+
+                    // Immediately fetch tasks so quest-based task completion shows up right away
+                    if (success)
+                    {
+                        fetchTasks();
+                        ticksSinceLastTaskFetch = 0;
+                    }
                 }
                 catch (Exception e)
                 {

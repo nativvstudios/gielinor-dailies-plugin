@@ -185,11 +185,17 @@ public class GielinorDailiesOverlay extends OverlayPanel
         long completed = tasks.stream().filter(t -> t.completed).count();
         boolean allDone = completed == tasks.size();
 
+        // Hide overlay entirely when all tasks are done
+        if (allDone)
+        {
+            return null;
+        }
+
         panelComponent.getChildren().add(LineComponent.builder()
             .left("Progress")
             .right(completed + "/" + tasks.size())
             .leftColor(TEXT_MUTED)
-            .rightColor(allDone ? COLOR_COMPLETED : TEXT_WHITE)
+            .rightColor(TEXT_WHITE)
             .build());
 
         for (GielinorDailiesApiClient.GielinorDailiesTask task : tasks)
