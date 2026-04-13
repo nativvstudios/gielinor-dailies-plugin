@@ -18,22 +18,19 @@ A [RuneLite](https://runelite.net/) plugin that syncs your OSRS stats, XP gains,
 2. Create an account at [Gielinor Dailies](https://gielinordailies.com)
 3. Add your OSRS character to your account
 4. Generate an API token from your account settings
-5. In the plugin config, enter your API URL and token
+5. In the plugin config, enter your API token
 6. Log into OSRS - the plugin will automatically match your RSN and start syncing
 
 ## Configuration
 
 | Setting | Description | Default |
 |---------|-------------|---------|
-| API URL | Your Gielinor Dailies API endpoint | - |
 | API Token | Your authentication token | - |
 | Push Stats | Enable automatic stat syncing | On |
 | Push Boss KC | Enable boss kill count tracking | On |
-| Push Interval | How often to push stats (seconds) | 60 |
 | Show Overlay | Show the in-game task overlay | On |
-| Task Refresh | How often to check for task updates (seconds) | 120 |
 | Completion Sound | Play a sound when tasks are completed | On |
 
 ## Support
 
-Report issues at https://github.com/Whyherro/gielinor-dailies-plugin/issues
+Report issues at https://github.com/nativvstudios/gielinor-dailies-plugin/issues
