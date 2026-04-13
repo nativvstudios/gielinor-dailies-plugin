@@ -33,14 +33,11 @@ public class GielinorDailiesApiClient
         this.config = config;
     }
 
+    private static final String BASE_URL = "https://gielinordailies.com";
+
     private String baseUrl()
     {
-        String url = config.apiUrl();
-        if (url.endsWith("/"))
-        {
-            url = url.substring(0, url.length() - 1);
-        }
-        return url;
+        return BASE_URL;
     }
 
     private Request.Builder authedRequest(String path)

@@ -205,18 +205,16 @@ public class GielinorDailiesPlugin extends Plugin
         ticksSinceLastQuestCheck++;
         ticksSinceLastAnnouncementFetch++;
 
-        // Push stats on configured interval (convert seconds to ticks, ~0.6s per tick)
-        int pushIntervalTicks = Math.max(50, config.pushIntervalSeconds() * 10 / 6);
-        if (ticksSinceLastPush >= pushIntervalTicks && statsTracker.isDirty())
+        // Push stats every 60 seconds (~100 ticks)
+        if (ticksSinceLastPush >= 100 && statsTracker.isDirty())
         {
             pushStatsAsync();
             pushGainsAsync();
             ticksSinceLastPush = 0;
         }
 
-        // Check for task changes on configured interval (convert seconds to ticks, ~0.6s per tick)
-        int taskRefreshTicks = Math.max(100, config.taskRefreshSeconds() * 10 / 6); // min 60s
-        if (ticksSinceLastTaskFetch >= taskRefreshTicks)
+        // Check for task changes every 120 seconds (~200 ticks)
+        if (ticksSinceLastTaskFetch >= 200)
         {
             checkAndFetchTasksAsync();
             ticksSinceLastTaskFetch = 0;
