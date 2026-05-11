@@ -6,6 +6,7 @@ import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.Skill;
+import net.runelite.api.WorldType;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
@@ -78,6 +79,7 @@ public class GielinorDailiesPlugin extends Plugin
     private NavigationButton navButton;
 
     private boolean connected = false;
+    private boolean seasonalWorld = false;
     private int matchedCharacterId = -1;
     private int ticksSinceLastPush = 0;
     private int ticksSinceLastTaskFetch = 0;
@@ -153,6 +155,7 @@ public class GielinorDailiesPlugin extends Plugin
             }
             loggedIn = false;
             connected = false;
+            seasonalWorld = false;
             matchedCharacterId = -1;
             initialTaskFetchDone = false;
             previouslyCompletedIds.clear();
@@ -160,6 +163,7 @@ public class GielinorDailiesPlugin extends Plugin
             questTracker.reset();
             overlay.setConnected(false);
             panel.setConnected(false);
+            panel.setSeasonalWorld(false);
         }
     }
 
@@ -171,6 +175,22 @@ public class GielinorDailiesPlugin extends Plugin
             return;
         }
 
+        // Detect world-type changes mid-session (e.g., hopping to/from a Leagues world)
+        boolean nowSeasonal = isSeasonalWorld();
+        if (nowSeasonal != seasonalWorld)
+        {
+            seasonalWorld = nowSeasonal;
+            panel.setSeasonalWorld(seasonalWorld);
+            if (seasonalWorld)
+            {
+                log.info("Gielinor Dailies: Entered seasonal/Leagues world — data sync paused");
+            }
+            else
+            {
+                log.info("Gielinor Dailies: Left seasonal world — data sync resumed");
+            }
+        }
+
         // Initialize on first tick after login (client data is ready)
         if (!statsTracker.isInitialized())
         {
@@ -179,7 +199,7 @@ public class GielinorDailiesPlugin extends Plugin
         }
 
         // If initial quest push is pending, capture on game thread and push async
-        if (questPushPending && connected)
+        if (questPushPending && connected && !seasonalWorld)
         {
             questPushPending = false;
             List<QuestTracker.QuestData> allQuests = questTracker.captureAllQuests();
@@ -205,8 +225,8 @@ public class GielinorDailiesPlugin extends Plugin
         ticksSinceLastQuestCheck++;
         ticksSinceLastAnnouncementFetch++;
 
-        // Push stats every 60 seconds (~100 ticks)
-        if (ticksSinceLastPush >= 100 && statsTracker.isDirty())
+        // Push stats every 60 seconds (~100 ticks) — skipped on seasonal worlds
+        if (ticksSinceLastPush >= 100 && statsTracker.isDirty() && !seasonalWorld)
         {
             pushStatsAsync();
             pushGainsAsync();
@@ -220,8 +240,8 @@ public class GielinorDailiesPlugin extends Plugin
             ticksSinceLastTaskFetch = 0;
         }
 
-        // Check for quest state changes every ~10 seconds (~17 ticks)
-        if (ticksSinceLastQuestCheck >= 17)
+        // Check for quest state changes every ~10 seconds (~17 ticks) — skipped on seasonal worlds
+        if (ticksSinceLastQuestCheck >= 17 && !seasonalWorld)
         {
             checkQuestChangesAsync();
             ticksSinceLastQuestCheck = 0;
@@ -238,7 +258,7 @@ public class GielinorDailiesPlugin extends Plugin
     @Subscribe
     public void onStatChanged(StatChanged event)
     {
-        if (!loggedIn || !config.pushStats())
+        if (!loggedIn || !config.pushStats() || seasonalWorld)
         {
             return;
         }
@@ -250,7 +270,7 @@ public class GielinorDailiesPlugin extends Plugin
     @Subscribe
     public void onChatMessage(ChatMessage event)
     {
-        if (!loggedIn || !config.pushBossKc())
+        if (!loggedIn || !config.pushBossKc() || seasonalWorld)
         {
             return;
         }
@@ -293,9 +313,18 @@ public class GielinorDailiesPlugin extends Plugin
             return; // Not ready yet
         }
 
-        log.info("Gielinor Dailies: Logged in as {}, connecting...", rsn);
+        seasonalWorld = isSeasonalWorld();
+        panel.setSeasonalWorld(seasonalWorld);
+        if (seasonalWorld)
+        {
+            log.info("Gielinor Dailies: Logged in as {} on a seasonal/Leagues world — data sync disabled", rsn);
+        }
+        else
+        {
+            log.info("Gielinor Dailies: Logged in as {}, connecting...", rsn);
+        }
 
-        // Capture XP baseline immediately
+        // Capture XP baseline immediately (even on seasonal, so baseline is ready if they hop off)
         statsTracker.captureBaseline();
 
         // Connect and match character in background
@@ -337,20 +366,23 @@ public class GielinorDailiesPlugin extends Plugin
                 panel.setConnected(true);
                 log.debug("Gielinor Dailies: Matched to character '{}' (id={})", matched.name, matched.id);
 
-                // Do an initial stats push
-                if (config.pushStats() && "plugin".equals(matched.dataSource))
+                // Do an initial stats push — skipped on seasonal/Leagues worlds
+                if (config.pushStats() && "plugin".equals(matched.dataSource) && !seasonalWorld)
                 {
                     pushStats();
                 }
 
-                // Fetch tasks for overlay
+                // Fetch tasks for overlay (always — tasks are world-agnostic)
                 fetchTasks();
 
                 // Fetch announcements
                 fetchAnnouncements();
 
-                // Quest push happens on next game tick (needs game thread for varbit access)
-                questPushPending = true;
+                // Queue initial quest push — skipped on seasonal/Leagues worlds
+                if (!seasonalWorld)
+                {
+                    questPushPending = true;
+                }
             }
             catch (Throwable t)
             {
@@ -557,6 +589,11 @@ public class GielinorDailiesPlugin extends Plugin
         {
             log.warn("Gielinor Dailies: Fetch announcements error", e);
         }
+    }
+
+    private boolean isSeasonalWorld()
+    {
+        return client.getWorldType().contains(WorldType.SEASONAL);
     }
 
     /**

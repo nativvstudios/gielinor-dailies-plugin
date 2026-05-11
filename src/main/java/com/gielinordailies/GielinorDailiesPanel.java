@@ -39,8 +39,12 @@ public class GielinorDailiesPanel extends PluginPanel
 
     private static final int MAX_W = Integer.MAX_VALUE;
 
+    private static final Color COLOR_SEASONAL_FG = new Color(255, 200, 80);
+    private static final Color COLOR_SEASONAL_BG = new Color(55, 44, 15);
+
     private final JPanel contentPanel;
     private final JLabel statusLabel;
+    private final JLabel seasonalBanner;
     private final JLabel progressLabel;
     private final ProgressBar progressBar;
     private final JPanel announcementsPanel;
@@ -101,6 +105,18 @@ public class GielinorDailiesPanel extends PluginPanel
         statusLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         contentPanel.add(statusLabel);
 
+        // Seasonal/Leagues world banner — hidden by default
+        seasonalBanner = new JLabel("\u2694 Leagues World \u2014 sync paused");
+        seasonalBanner.setFont(FontManager.getRunescapeBoldFont().deriveFont(12f));
+        seasonalBanner.setForeground(COLOR_SEASONAL_FG);
+        seasonalBanner.setOpaque(true);
+        seasonalBanner.setBackground(COLOR_SEASONAL_BG);
+        seasonalBanner.setBorder(new EmptyBorder(4, 8, 4, 8));
+        seasonalBanner.setAlignmentX(Component.LEFT_ALIGNMENT);
+        seasonalBanner.setMaximumSize(new Dimension(MAX_W, 24));
+        seasonalBanner.setVisible(false);
+        contentPanel.add(seasonalBanner);
+
         contentPanel.add(Box.createVerticalStrut(6));
 
         // Announcements section (dynamic, initially hidden)
@@ -156,6 +172,11 @@ public class GielinorDailiesPanel extends PluginPanel
             statusLabel.setText(connected ? "Connected" : "Not connected");
             statusLabel.setForeground(connected ? COLOR_DONE : COLOR_HIGH);
         });
+    }
+
+    public void setSeasonalWorld(boolean seasonal)
+    {
+        SwingUtilities.invokeLater(() -> seasonalBanner.setVisible(seasonal));
     }
 
     public void updateTasks(List<GielinorDailiesApiClient.GielinorDailiesTask> tasks)
@@ -318,8 +339,8 @@ public class GielinorDailiesPanel extends PluginPanel
     private void rebuildTaskList()
     {
         // Remove all dynamic components (everything after the static header)
-        // Static: titleRow, strut, status, strut, announcementsPanel, progressLabel, strut, progressBar, strut, divider, strut = 11
-        int staticCount = 11;
+        // Static: titleRow, strut, status, seasonalBanner, strut, announcementsPanel, progressLabel, strut, progressBar, strut, divider, strut = 12
+        int staticCount = 12;
         while (contentPanel.getComponentCount() > staticCount)
         {
             contentPanel.remove(staticCount);
